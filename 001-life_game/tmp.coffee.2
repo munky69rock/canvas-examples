@@ -1,0 +1,109 @@
+SCREEN_SIZE = 500
+SIDE_CELLS = 200
+CELL_SIZE = SCREEN_SIZE / SIDE_CELLS
+FPS = 10
+
+class Cell
+  constructor: (state) ->
+    if state
+      @state = state
+    else
+      @state = Math.floor(Math.random()*2)
+
+  state: 0
+  survivor: 0
+
+  stillAlive: ->
+    if (@state and (@survivor is 2 or @survivor is 3)) or (not @state and @survivor is 2)
+      return true
+    else
+      return false
+
+class Field extends Array
+  constructor: ->
+    for i in [0 ... SIDE_CELLS*SIDE_CELLS]
+      @push new Cell()
+    
+  clone: (obj = @) ->
+    if obj is null or typeof obj isnt 'object'
+      return obj
+
+    # Handle Array
+    if obj instanceof Field
+      copy = []
+      for i in [0 ... obj.length]
+        copy[i] = @clone(obj[i])
+      return copy
+
+    # Handle Object
+    if obj instanceof Cell
+      return new Cell(obj.state)
+
+    throw new Error("Unable to copy obj! Its type isn't supported.")
+
+  temp: []
+  update: ->
+    @temp = @clone()
+    for i in [0 ... @temp.length]
+      @temp[i].survivor = 0
+      for s in [-1 .. 1]
+        for t in [-1 .. 1]
+          continue if s is 0 and t is 0
+          c = i + s*SIDE_CELLS + t
+          if c >= 0 and c < @temp.length
+            if (i < c and c % SIDE_CELLS isnt 0) or (i>c and c % SIDE_CELLS isnt SIDE_CELLS - 1)
+              @temp[i].survivor++ if @temp[c].state
+
+      if @temp[i].stillAlive()
+        @[i].state = 1
+      else
+        @[i].state = 0
+    return
+
+class Canvas
+  constructor: ->
+    @cvs = document.getElementById @id
+    @scaleRate = Math.min(window.innerWidth/SCREEN_SIZE, window.innerHeight/SCREEN_SIZE)
+    for k in ['width', 'height']
+      @cvs[k] = SCREEN_SIZE
+      @cvs.style[k] = SCREEN_SIZE*@scaleRate + 'px'
+
+    @ctx = @cvs.getContext '2d'
+    @ctx.fillStyle = @style
+
+  id: 'world'
+  style: 'rgb(211,85,149)'
+
+  draw: (field) ->
+    @ctx.clearRect 0, 0, SCREEN_SIZE, SCREEN_SIZE
+    for i in [0 ... field.length]
+      x = (i % SIDE_CELLS) * CELL_SIZE
+      y = Math.floor(i / SIDE_CELLS) * CELL_SIZE
+      if field[i].state
+        @ctx.fillRect x, y, CELL_SIZE, CELL_SIZE
+    return
+
+class LifeGame
+  constructor: ->
+    @field = new Field()
+    @canvas = new Canvas()
+
+  field: []
+  canvas: null
+
+  update: ->
+    survivor = 0
+    @field.update()
+
+    @canvas.draw(@field)
+    self = @
+    setTimeout ->
+      self.update()
+    , 1000/FPS
+    
+
+window.onload = ->
+  lifeGame = new LifeGame()
+  lifeGame.update()
+  return
+

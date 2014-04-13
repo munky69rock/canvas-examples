@@ -1,0 +1,166 @@
+!!! 5
+%meta(charset="utf-8")
+%title Langton's Ant
+:coffeescript
+
+  #
+  # original: http://ottati.hatenablog.com/entry/2013/09/16/122423
+  #
+  # rewrite and customize with haml & coffee-script
+  #
+
+  SCREEN_SIZE = 600
+  SIDE_CELLS = 200
+  CELL_SIZE = SCREEN_SIZE / SIDE_CELLS
+  FPS = 200
+
+  class Ant
+    DIRECTIONS = [
+      { row: -1, col:  0 }
+      { row:  0, col:  1 }
+      { row:  1, col:  0 }
+      { row:  0, col: -1 }
+    ]
+
+    constructor: (params = {}) ->
+      for key of params
+        @[key] = params[key]
+      return
+
+    dir: 0
+    row: SIDE_CELLS/2
+    col: SIDE_CELLS/2
+
+    goAhead: ->
+      base = DIRECTIONS.length
+      @dir = (@dir + base) % base
+      @row += DIRECTIONS[@dir].row
+      @col += DIRECTIONS[@dir].col
+      return
+    
+    setDirection: (flag) ->
+      if flag
+        @dirLeft()
+      else
+        @dirRight()
+      
+    dirLeft: -> @dir--
+    dirRight: -> @dir++
+
+    isOutOfScreen: ->
+      if @row < 0 or @row >= SIDE_CELLS or @col < 0 or @col >= SIDE_CELLS
+        true
+      else
+        false
+
+    warp: ->
+      if @row < 0
+        @row = SIDE_CELLS - 1
+      if @row >= SIDE_CELLS
+        @row = 0
+      if @col < 0
+        @col = SIDE_CELLS - 1
+      if @col >= SIDE_CELLS
+        @col = 0
+
+  class Canvas
+    constructor: ->
+      @cvs = document.getElementById @id
+      @ctx = @cvs.getContext '2d'
+      @cvs.width = @cvs.height = SCREEN_SIZE
+      @cvs.style.height = @cvs.style.width = SCREEN_SIZE*@scaleRate + "px"
+      return
+
+    id: 'world'
+    cvs: null
+    ctx: null
+
+    scaleRate: Math.min(window.innerHeight/SCREEN_SIZE, window.innerHeight/SCREEN_SIZE)
+
+    fillCell: (ant, flag) ->
+      if flag
+        color = 'rgb(0,0,0)'
+      else if ant.color
+        color = ant.color
+      else
+        color = 'rgb(0,255,255)'
+
+      @fillSquare(color,ant)
+      return
+
+    fillAnt: (ant) ->
+      @fillSquare('rgb(255,255,255)', ant)
+      return
+
+    fillSquare: (color, ant) ->
+      @ctx.fillStyle = color
+      @ctx.fillRect(ant.col*CELL_SIZE, ant.row*CELL_SIZE, CELL_SIZE, CELL_SIZE)
+      
+
+  class Field extends Array
+    constructor: ->
+      for i in [0 ... SIDE_CELLS]
+        @[i] = []
+        for j in [0 ... SIDE_CELLS]
+          @[i][j] = 0
+      return
+
+    isColored: (ant) ->
+      if @[ant.row][ant.col] then true else false
+
+    reverse: (ant) ->
+      @[ant.row][ant.col] = 1 - @[ant.row][ant.col]
+
+  class App
+    constructor: ->
+      @canvas = new Canvas()
+      @field  = new Field()
+      @ants = [
+        new Ant()
+        new Ant(
+          color: 'rgb(255,0,255)'
+          row: parseInt(SIDE_CELLS/3)
+          col: parseInt(SIDE_CELLS/3)
+        )
+        new Ant(
+          color: 'rgb(255,255,0)'
+          row: parseInt(SIDE_CELLS/3) * 2
+          col: parseInt(SIDE_CELLS/3) * 2
+        )
+      ]
+
+    simulate: ->
+      for ant in @ants
+        isColored = @field.isColored(ant)
+        ant.setDirection(isColored)
+        @canvas.fillCell(ant, isColored)
+        @field.reverse(ant)
+        ant.goAhead()
+        @canvas.fillAnt(ant)
+      @next()
+
+    next: ->
+      for ant in @ants
+        if ant.isOutOfScreen()
+          ant.warp()
+
+      self = @
+      setTimeout(->
+        self.simulate()
+      , 1000/FPS)
+
+  window.onload = ->
+    app = new App()
+    app.simulate()
+
+:css
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  #world {
+    margin: auto;
+    display: block;
+    background: #000;
+  }
+%canvas#world

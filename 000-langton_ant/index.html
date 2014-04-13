@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<title>Langton's Ant</title>
+<script>
+  (function() {
+    var Ant, App, CELL_SIZE, Canvas, FPS, Field, SCREEN_SIZE, SIDE_CELLS,
+      __hasProp = {}.hasOwnProperty,
+      __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  
+    SCREEN_SIZE = 600;
+  
+    SIDE_CELLS = 200;
+  
+    CELL_SIZE = SCREEN_SIZE / SIDE_CELLS;
+  
+    FPS = 200;
+  
+    Ant = (function() {
+      var DIRECTIONS;
+  
+      DIRECTIONS = [
+        {
+          row: -1,
+          col: 0
+        }, {
+          row: 0,
+          col: 1
+        }, {
+          row: 1,
+          col: 0
+        }, {
+          row: 0,
+          col: -1
+        }
+      ];
+  
+      function Ant(params) {
+        var key;
+        if (params == null) {
+          params = {};
+        }
+        for (key in params) {
+          this[key] = params[key];
+        }
+        return;
+      }
+  
+      Ant.prototype.dir = 0;
+  
+      Ant.prototype.row = SIDE_CELLS / 2;
+  
+      Ant.prototype.col = SIDE_CELLS / 2;
+  
+      Ant.prototype.goAhead = function() {
+        var base;
+        base = DIRECTIONS.length;
+        this.dir = (this.dir + base) % base;
+        this.row += DIRECTIONS[this.dir].row;
+        this.col += DIRECTIONS[this.dir].col;
+      };
+  
+      Ant.prototype.setDirection = function(flag) {
+        if (flag) {
+          return this.dirLeft();
+        } else {
+          return this.dirRight();
+        }
+      };
+  
+      Ant.prototype.dirLeft = function() {
+        return this.dir--;
+      };
+  
+      Ant.prototype.dirRight = function() {
+        return this.dir++;
+      };
+  
+      Ant.prototype.isOutOfScreen = function() {
+        if (this.row < 0 || this.row >= SIDE_CELLS || this.col < 0 || this.col >= SIDE_CELLS) {
+          return true;
+        } else {
+          return false;
+        }
+      };
+  
+      Ant.prototype.warp = function() {
+        if (this.row < 0) {
+          this.row = SIDE_CELLS - 1;
+        }
+        if (this.row >= SIDE_CELLS) {
+          this.row = 0;
+        }
+        if (this.col < 0) {
+          this.col = SIDE_CELLS - 1;
+        }
+        if (this.col >= SIDE_CELLS) {
+          return this.col = 0;
+        }
+      };
+  
+      return Ant;
+  
+    })();
+  
+    Canvas = (function() {
+      function Canvas() {
+        this.cvs = document.getElementById(this.id);
+        this.ctx = this.cvs.getContext('2d');
+        this.cvs.width = this.cvs.height = SCREEN_SIZE;
+        this.cvs.style.height = this.cvs.style.width = SCREEN_SIZE * this.scaleRate + "px";
+        return;
+      }
+  
+      Canvas.prototype.id = 'world';
+  
+      Canvas.prototype.cvs = null;
+  
+      Canvas.prototype.ctx = null;
+  
+      Canvas.prototype.scaleRate = Math.min(window.innerHeight / SCREEN_SIZE, window.innerHeight / SCREEN_SIZE);
+  
+      Canvas.prototype.fillCell = function(ant, flag) {
+        var color;
+        if (flag) {
+          color = 'rgb(0,0,0)';
+        } else if (ant.color) {
+          color = ant.color;
+        } else {
+          color = 'rgb(0,255,255)';
+        }
+        this.fillSquare(color, ant);
+      };
+  
+      Canvas.prototype.fillAnt = function(ant) {
+        this.fillSquare('rgb(255,255,255)', ant);
+      };
+  
+      Canvas.prototype.fillSquare = function(color, ant) {
+        this.ctx.fillStyle = color;
+        return this.ctx.fillRect(ant.col * CELL_SIZE, ant.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      };
+  
+      return Canvas;
+  
+    })();
+  
+    Field = (function(_super) {
+      __extends(Field, _super);
+  
+      function Field() {
+        var i, j, _i, _j;
+        for (i = _i = 0; 0 <= SIDE_CELLS ? _i < SIDE_CELLS : _i > SIDE_CELLS; i = 0 <= SIDE_CELLS ? ++_i : --_i) {
+          this[i] = [];
+          for (j = _j = 0; 0 <= SIDE_CELLS ? _j < SIDE_CELLS : _j > SIDE_CELLS; j = 0 <= SIDE_CELLS ? ++_j : --_j) {
+            this[i][j] = 0;
+          }
+        }
+        return;
+      }
+  
+      Field.prototype.isColored = function(ant) {
+        if (this[ant.row][ant.col]) {
+          return true;
+        } else {
+          return false;
+        }
+      };
+  
+      Field.prototype.reverse = function(ant) {
+        return this[ant.row][ant.col] = 1 - this[ant.row][ant.col];
+      };
+  
+      return Field;
+  
+    })(Array);
+  
+    App = (function() {
+      function App() {
+        this.canvas = new Canvas();
+        this.field = new Field();
+        this.ants = [
+          new Ant(), new Ant({
+            color: 'rgb(255,0,255)',
+            row: parseInt(SIDE_CELLS / 3),
+            col: parseInt(SIDE_CELLS / 3)
+          }), new Ant({
+            color: 'rgb(255,255,0)',
+            row: parseInt(SIDE_CELLS / 3) * 2,
+            col: parseInt(SIDE_CELLS / 3) * 2
+          })
+        ];
+      }
+  
+      App.prototype.simulate = function() {
+        var ant, isColored, _i, _len, _ref;
+        _ref = this.ants;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          ant = _ref[_i];
+          isColored = this.field.isColored(ant);
+          ant.setDirection(isColored);
+          this.canvas.fillCell(ant, isColored);
+          this.field.reverse(ant);
+          ant.goAhead();
+          this.canvas.fillAnt(ant);
+        }
+        return this.next();
+      };
+  
+      App.prototype.next = function() {
+        var ant, self, _i, _len, _ref;
+        _ref = this.ants;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          ant = _ref[_i];
+          if (ant.isOutOfScreen()) {
+            ant.warp();
+          }
+        }
+        self = this;
+        return setTimeout(function() {
+          return self.simulate();
+        }, 1000 / FPS);
+      };
+  
+      return App;
+  
+    })();
+  
+    window.onload = function() {
+      var app;
+      app = new App();
+      return app.simulate();
+    };
+  
+  }).call(this);
+</script>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  #world {
+    margin: auto;
+    display: block;
+    background: #000;
+  }
+</style>
+<canvas id='world'></canvas>

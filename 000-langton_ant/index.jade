@@ -1,0 +1,131 @@
+!!! 5
+meta(charset="utf-8")
+title Langton's Ant
+:coffeescript
+
+  #
+  # original: http://ottati.hatenablog.com/entry/2013/09/16/122423
+  #
+  # rewrite and customize with jade & coffee-script
+  #
+
+  SCREEN_SIZE = 500
+  SIDE_CELLS = 200
+  CELL_SIZE = SCREEN_SIZE / SIDE_CELLS
+  FPS = 200
+  DIRECTIONS = [
+    { row: -1, col:  0 }
+    { row:  0, col:  1 }
+    { row:  1, col:  0 }
+    { row:  0, col: -1 }
+  ]
+
+  class Ant
+    constructor: ->
+
+    dir: 0
+    row: SIDE_CELLS/2 - 1
+    col: SIDE_CELLS/2 - 1
+
+    goAhead: ->
+      base = DIRECTIONS.length
+      @dir = (@dir + base) % base
+      @row += DIRECTIONS[@dir].row
+      @col += DIRECTIONS[@dir].col
+      return
+    
+    setDirection: (flag) ->
+      if flag
+        @dirLeft()
+      else
+        @dirRight()
+      
+    dirLeft: -> @dir--
+    dirRight: -> @dir++
+
+    isOutOfScreen: ->
+      if @row < 0 or @row >= SIDE_CELLS or @col < 0 or @col >= SIDE_CELLS
+        true
+      else
+        false
+
+  class Canvas
+    constructor: ->
+      @cvs = document.getElementById @id
+      @ctx = @cvs.getContext '2d'
+      @cvs.width = @cvs.height = SCREEN_SIZE
+      @cvs.style.height = @cvs.style.width = "#{SCREEN_SIZE*@scaleRate}px"
+      return
+
+    id: 'world'
+    cvs: null
+    ctx: null
+
+    scaleRate: Math.min(window.innerHeight/SCREEN_SIZE, window.innerHeight/SCREEN_SIZE)
+
+    fillCell: (ant, flag) ->
+      if flag
+        @ctx.fillStyle = 'rgb(0,0,0)'
+      else
+        @ctx.fillStyle = 'rgb(0,255,255)'
+
+      @ctx.fillRect(ant.col*CELL_SIZE, ant.row*CELL_SIZE, CELL_SIZE, CELL_SIZE)
+      return
+
+    fillAnt: (ant) ->
+      @ctx.fillStyle = 'rgb(0,0,255)'
+      @ctx.fillRect(ant.col*CELL_SIZE, ant.row*CELL_SIZE, CELL_SIZE, CELL_SIZE)
+
+  class Field extends Array
+    constructor: ->
+      for i in [0 ... SIDE_CELLS]
+        @[i] = []
+        for j in [0 ... SIDE_CELLS]
+          @[i][j] = 0
+      return
+
+    isWhite: (ant) ->
+      if @[ant.row][ant.col] then true else false
+
+    reverse: (ant) ->
+      @[ant.row][ant.col] = 1 - @[ant.row][ant.col]
+
+  class App
+    constructor: ->
+      @canvas = new Canvas()
+      @field  = new Field()
+      @ant    = new Ant()
+
+    simulate: ->
+      isWhite = @field.isWhite(@ant)
+      @ant.setDirection(isWhite)
+      @canvas.fillCell(@ant, isWhite)
+      @field.reverse(@ant)
+      @ant.goAhead()
+      @canvas.fillAnt(@ant)
+      @next()
+
+    next: ->
+      if @ant.isOutOfScreen()
+        alert('game over')
+      else
+        self = @
+        setTimeout(->
+          self.simulate()
+        , 1000/FPS)
+
+  window.onload = ->
+    app = new App()
+    app.simulate()
+
+style.
+  body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+  }
+  #world {
+    margin: auto;
+    display: block;
+  }
+canvas#world
